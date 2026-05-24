@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>獅子會社會服務擺拍指導相機</title>
+  <title>獅子會社會服務擺拍指導</title>
   <style>
     body {
       font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -16,17 +16,17 @@
       align-items: center;
       min-height: 100vh;
     }
-    h2 { color: #003366; margin-top: 20px; margin-bottom: 5px; }
-    #status { color: #666; font-size: 14px; margin-bottom: 15px; padding: 0 20px; }
+    h2 { color: #003366; margin-top: 15px; margin-bottom: 5px; font-size: 22px; }
+    #status { color: #666; font-size: 13px; margin-bottom: 10px; padding: 0 20px; }
 
     /* 相機主畫面區塊 */
     #camera-container {
       position: relative;
-      width: 90vw;
-      height: 90vw; /* 保持正方形 */
-      max-width: 500px;
-      max-height: 500px;
-      border-radius: 15px;
+      width: 92vw;
+      height: 92vw;
+      max-width: 450px;
+      max-height: 450px;
+      border-radius: 12px;
       overflow: hidden;
       background-color: #000;
       box-shadow: 0 4px 15px rgba(0,0,0,0.1);
@@ -46,35 +46,37 @@
       width: 100%;
       height: 100%;
       pointer-events: none;
-      opacity: 0.8;
+      opacity: 0.85; /* 稍微加深一點讓虛線更清楚 */
     }
 
+    /* 攝影師白話提示 */
     #poseHint {
       position: absolute;
-      bottom: 20px;
+      bottom: 15px;
       width: 100%;
       text-align: center;
       color: white;
       font-weight: bold;
-      font-size: 16px;
-      text-shadow: 2px 2px 4px black;
+      font-size: 15px;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5);
       pointer-events: none;
-      padding: 0 20px;
+      padding: 0 15px;
       box-sizing: border-box;
+      line-height: 1.4;
     }
 
     /* 主要拍照控制區 */
     #main-controls {
       width: 100%;
       max-width: 500px;
-      padding: 15px 0;
+      padding: 15px 0 10px 0;
       display: flex;
       justify-content: center;
     }
 
     #snapBtn, #retakeBtn {
-      padding: 15px 40px;
-      font-size: 20px;
+      padding: 12px 30px;
+      font-size: 18px;
       font-weight: bold;
       background-color: #F2A900;
       color: #003366;
@@ -90,16 +92,16 @@
     /* 10個情境按鈕的面板 */
     #pose-panel {
       width: 95vw;
-      max-width: 600px;
+      max-width: 500px;
       display: grid;
-      grid-template-columns: repeat(2, 1fr); /* 兩欄式排列，適合平板 */
-      gap: 10px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
       padding: 0 10px 20px 10px;
       box-sizing: border-box;
     }
 
     .pose-btn {
-      padding: 12px 5px;
+      padding: 10px 4px;
       font-size: 14px;
       font-weight: bold;
       background-color: #ffffff;
@@ -108,12 +110,10 @@
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.2s;
-      /* 文字過長時允許換行 */
       white-space: normal;
       line-height: 1.2;
     }
 
-    /* 被選中時的按鈕樣式 */
     .pose-btn.active {
       background-color: #003366;
       color: #ffffff;
@@ -121,15 +121,14 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
 
-    #result-container { margin-top: 15px; display: none; text-align: center; width: 90vw; max-width: 500px; }
+    #result-container { margin-top: 10px; display: none; text-align: center; width: 90vw; max-width: 450px; }
     #result-image { width: 100%; border: 2px solid #003366; border-radius: 10px; }
-
   </style>
 </head>
 <body>
 
-  <h2>公益紀錄擺拍指導</h2>
-  <p id="status">點擊下方按鈕切換情境</p>
+  <h2>📸 公益紀錄擺拍相機</h2>
+  <p id="status">請直接對齊畫面中的圖形與文字</p>
 
   <div id="camera-container">
     <video id="video" autoplay playsinline></video>
@@ -138,7 +137,7 @@
   </div>
 
   <div id="main-controls">
-    <button id="snapBtn">📸 拍下紀錄照</button>
+    <button id="snapBtn">📸 拍下這張照片</button>
     <button id="retakeBtn">🔄 重新拍攝</button>
   </div>
 
@@ -147,7 +146,7 @@
   <canvas id="canvas" style="display:none;"></canvas>
 
   <div id="result-container">
-    <h3>✅ 拍攝完成！(長按圖片可儲存)</h3>
+    <h3>✅ 拍攝完成！<br><small style="color:#666; font-size:14px;">(請長按上方圖片儲存至相簿)</small></h3>
     <img id="result-image" alt="拍攝結果" />
   </div>
 
@@ -164,30 +163,23 @@
     const poseGuide = document.getElementById('poseGuide');
     const poseHint = document.getElementById('poseHint');
 
-    // 啟動相機
     async function startCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         video.srcObject = stream;
-        video.onloadedmetadata = function() {
-          updatePose(0); // 預設顯示第一組
-        };
+        video.onloadedmetadata = function() { updatePose(0); };
       } catch (err) {
-        alert("無法開啟相機，請確認您已開啟瀏覽器的相機權限！");
+        alert("無法開啟相機，請確認瀏覽器權限！");
       }
     }
 
     startCamera();
 
-    // 拍照功能
     snapBtn.addEventListener('click', () => {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataURL = canvas.toDataURL('image/jpeg', 0.8);
-      resultImage.src = dataURL;
+      resultImage.src = canvas.toDataURL('image/jpeg', 0.8);
       cameraContainer.style.display = 'none';
       snapBtn.style.display = 'none';
       posePanel.style.display = 'none';
@@ -195,7 +187,6 @@
       retakeBtn.style.display = 'inline-block';
     });
 
-    // 重新拍攝
     retakeBtn.addEventListener('click', () => {
       cameraContainer.style.display = 'block';
       snapBtn.style.display = 'inline-block';
@@ -204,64 +195,117 @@
       retakeBtn.style.display = 'none';
     });
 
-    // 產生 SVG 幾何剪影
-    function generatePlaceholderSvg(poseType) {
-      let svgContent = '';
+    // 產生具體的 SVG 圖形與文字
+    function generateSvgGuide(poseType) {
+      let content = '';
+      const style = 'fill="none" stroke="#F2A900" stroke-width="2" stroke-dasharray="4,4" stroke-linecap="round"';
+      const textStyle = 'font-family="sans-serif" font-size="6" fill="#F2A900" text-anchor="middle" font-weight="bold"';
+
       switch (poseType) {
-        case 'blood': svgContent = '<circle cx="30" cy="40" r="15" fill="none" stroke="%23F2A900" stroke-width="2"/><rect x="20" y="60" width="20" height="40" fill="none" stroke="%23F2A900" stroke-width="2"/><circle cx="70" cy="30" r="15" fill="none" stroke="%23F2A900" stroke-width="2"/><rect x="60" y="50" width="20" height="50" fill="none" stroke="%23F2A900" stroke-width="2"/><circle cx="50" cy="55" r="5" fill="%23F2A900" />'; break;
-        case 'vision': svgContent = '<circle cx="50" cy="50" r="30" fill="none" stroke="%23F2A900" stroke-width="2"/><ellipse cx="50" cy="50" rx="15" ry="25" fill="%23F2A900" transform="rotate(-15, 50, 50)" />'; break;
-        case 'meals': svgContent = '<ellipse cx="30" cy="50" rx="20" ry="8" fill="%23F2A900"/><ellipse cx="70" cy="50" rx="20" ry="8" fill="%23F2A900"/><circle cx="50" cy="50" r="10" fill="none" stroke="%23F2A900" stroke-width="3"/>'; break;
-        case 'kids-gift': svgContent = '<circle cx="30" cy="60" r="10" fill="none" stroke="%23F2A900" stroke-width="2"/><rect x="20" y="75" width="20" height="25" fill="none" stroke="%23F2A900" stroke-width="2"/><circle cx="70" cy="40" r="15" fill="none" stroke="%23F2A900" stroke-width="2"/><rect x="60" y="60" width="20" height="40" fill="none" stroke="%23F2A900" stroke-width="2"/><circle cx="50" cy="65" r="5" fill="%23F2A900"/>'; break;
-        case 'diabetes': svgContent = '<circle cx="50" cy="30" r="15" fill="none" stroke="%23F2A900" stroke-width="2"/><rect x="35" y="50" width="30" height="50" fill="none" stroke="%23F2A900" stroke-width="2"/><circle cx="50" cy="80" r="5" fill="%23F2A900"/>'; break;
-        case 'environment': svgContent = '<rect x="10" y="10" width="80" height="20" fill="none" stroke="%23F2A900" stroke-dasharray="5,5" stroke-width="2"/><circle cx="20" cy="70" r="8" fill="none" stroke="%23F2A900"/><circle cx="40" cy="70" r="8" fill="none" stroke="%23F2A900"/><circle cx="60" cy="70" r="8" fill="none" stroke="%23F2A900"/><circle cx="80" cy="70" r="8" fill="none" stroke="%23F2A900"/>'; break;
-        case 'ceremony': svgContent = '<circle cx="50" cy="30" r="25" fill="none" stroke="%23F2A900" stroke-width="3"/><rect x="10" y="60" width="80" height="40" fill="%23F2A900" />'; break;
-        case 'flag': svgContent = '<line x1="50" y1="10" x2="50" y2="90" stroke="%23F2A900" stroke-width="2"/><polygon points="50,10 80,25 50,40" fill="%23F2A900"/><ellipse cx="25" cy="50" rx="15" ry="30" fill="none" stroke="%23F2A900"/><ellipse cx="75" cy="50" rx="15" ry="30" fill="none" stroke="%23F2A900"/>'; break;
-        case 'planting': svgContent = '<polygon points="10,60 30,50 30,70" fill="none" stroke="%23F2A900"/><polygon points="40,60 60,50 60,70" fill="none" stroke="%23F2A900"/><polygon points="70,60 90,50 90,70" fill="none" stroke="%23F2A900"/><circle cx="20" cy="85" r="5" fill="%23F2A900"/><circle cx="50" cy="85" r="5" fill="%23F2A900"/><circle cx="80" cy="85" r="5" fill="%23F2A900"/>'; break;
-        case 'guided-run': svgContent = '<ellipse cx="35" cy="40" rx="10" ry="20" fill="none" stroke="%23F2A900"/><ellipse cx="65" cy="40" rx="10" ry="20" fill="none" stroke="%23F2A900"/><circle cx="50" cy="50" r="5" fill="%23F2A900"/>'; break;
+        case 'blood':
+          content = `
+            <circle cx="25" cy="30" r="8" ${style}/> <path d="M25 38 L25 70 M25 45 L10 60 M25 45 L40 60 M25 70 L15 90 M25 70 L35 90" ${style}/>
+            <text x="25" y="20" ${textStyle}>護理師站這裡</text>
+            <circle cx="75" cy="50" r="8" ${style}/> <path d="M75 58 L75 80 M75 65 L60 75 M75 65 L90 75 M75 80 L65 95 M75 80 L85 95" ${style}/>
+            <text x="75" y="40" ${textStyle}>獅友坐這裡</text>
+            <path d="M40 60 L60 75" ${style}/> <text x="50" y="65" ${textStyle}>抽血動作</text>`;
+          break;
+        case 'vision':
+          content = `
+            <rect x="10" y="30" width="40" height="40" rx="5" ${style}/> <circle cx="30" cy="50" r="10" ${style}/>
+            <text x="30" y="25" ${textStyle}>驗光儀器</text>
+            <path d="M70 30 Q60 40 65 50 Q60 60 70 70 Q80 70 85 50 Q85 30 70 30" ${style}/>
+            <text x="75" y="25" ${textStyle}>民眾側臉靠上</text>`;
+          break;
+        case 'meals':
+          content = `
+            <rect x="35" y="45" width="30" height="15" ${style}/> <text x="50" y="40" ${textStyle}>愛心便當/物資</text>
+            <path d="M10 50 L35 50 M10 55 L35 55" ${style}/> <text x="20" y="65" ${textStyle}>遞交的手</text>
+            <path d="M90 50 L65 50 M90 55 L65 55" ${style}/> <text x="80" y="65" ${textStyle}>接收的手</text>`;
+          break;
+        case 'kids-gift':
+          content = `
+            <circle cx="35" cy="50" r="8" ${style}/> <path d="M35 58 L35 85 M35 65 L20 75 M35 65 L50 75 M35 85 L25 95 M35 85 L45 95" ${style}/>
+            <text x="35" y="40" ${textStyle}>獅友蹲下平視</text>
+            <circle cx="70" cy="65" r="7" ${style}/> <path d="M70 72 L70 90 M70 75 L60 85 M70 75 L80 85" ${style}/>
+            <text x="70" y="55" ${textStyle}>小朋友</text>
+            <rect x="45" y="65" width="10" height="10" ${style}/>`;
+          break;
+        case 'diabetes':
+          content = `
+            <circle cx="50" cy="45" r="25" ${style}/>
+            <text x="50" y="35" ${textStyle}>手部與檢測儀器特寫</text>
+            <text x="50" y="50" ${textStyle}>(請將畫面放大)</text>`;
+          break;
+        case 'environment':
+          content = `
+            <rect x="10" y="10" width="80" height="20" ${style}/> <text x="50" y="22" ${textStyle}>活動紅布條對齊框框</text>
+            <circle cx="20" cy="60" r="6" ${style}/> <path d="M20 66 L20 90 M20 70 L10 80 M20 70 L30 80" ${style}/>
+            <circle cx="50" cy="60" r="6" ${style}/> <path d="M50 66 L50 90 M50 70 L40 80 M50 70 L60 80" ${style}/>
+            <circle cx="80" cy="60" r="6" ${style}/> <path d="M80 66 L80 90 M80 70 L70 80 M80 70 L90 80" ${style}/>
+            <text x="50" y="50" ${textStyle}>志工夥伴在下方排排站好</text>`;
+          break;
+        case 'ceremony':
+          content = `
+            <circle cx="50" cy="30" r="18" ${style}/> <text x="50" y="32" ${textStyle}>獅子會Logo</text>
+            <path d="M10 85 Q20 75 30 85 M30 85 Q40 70 50 85 M50 85 Q60 70 70 85 M70 85 Q80 75 90 85" ${style}/>
+            <text x="50" y="60" ${textStyle}>全體人員在下方集合</text>`;
+          break;
+        case 'flag':
+          content = `
+            <line x1="50" y1="10" x2="50" y2="90" ${style}/> <polygon points="50,15 75,25 50,35" fill="none" stroke="#F2A900" stroke-width="2"/>
+            <text x="50" y="8" ${textStyle}>旗桿對齊這條線</text>
+            <circle cx="25" cy="50" r="8" ${style}/> <path d="M25 58 L25 90" ${style}/> <text x="25" y="40" ${textStyle}>授旗會長</text>
+            <circle cx="75" cy="50" r="8" ${style}/> <path d="M75 58 L75 90" ${style}/> <text x="75" y="40" ${textStyle}>接旗會長</text>`;
+          break;
+        case 'planting':
+          content = `
+            <path d="M30 70 Q40 50 50 70" ${style}/> <circle cx="30" cy="70" r="5" ${style}/>
+            <text x="40" y="45" ${textStyle}>獅友彎腰動作</text>
+            <path d="M50 85 L50 70 M45 75 L50 70 L55 75" ${style}/> <text x="65" y="80" ${textStyle}>小樹苗/工具</text>`;
+          break;
+        case 'guided-run':
+          content = `
+            <circle cx="35" cy="40" r="8" ${style}/> <path d="M35 48 L35 75 M35 55 L50 60 M35 75 L25 90 M35 75 L45 90" ${style}/>
+            <text x="35" y="30" ${textStyle}>陪跑員</text>
+            <circle cx="65" cy="40" r="8" ${style}/> <path d="M65 48 L65 75 M65 55 L50 60 M65 75 L55 90 M65 75 L75 90" ${style}/>
+            <text x="65" y="30" ${textStyle}>視障朋友</text>
+            <circle cx="50" cy="60" r="4" fill="#F2A900"/> <text x="50" y="70" ${textStyle}>牽引繩</text>`;
+          break;
       }
-      return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">${svgContent}</svg>`;
+      
+      const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">${content}</svg>`;
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
     }
 
-    // 10組情境數據
     const poses = [
-      { id: 0, name: '💉 捐血活動', guideSrc: generatePlaceholderSvg('blood'), hint: '護理師站立，獅友微笑坐姿' },
-      { id: 1, name: '🔍 視力篩檢', guideSrc: generatePlaceholderSvg('vision'), hint: '圓孔對齊儀器，側臉對齊受檢者' },
-      { id: 2, name: '🍱 愛心餐點', guideSrc: generatePlaceholderSvg('meals'), hint: '遞物與接物雙手交疊' },
-      { id: 3, name: '🎁 癌童關懷', guideSrc: generatePlaceholderSvg('kids-gift'), hint: '獅友蹲下，小朋友站立' },
-      { id: 4, name: '🩸 血糖檢測', guideSrc: generatePlaceholderSvg('diabetes'), hint: '手指對齊剪影，拍出專注感' },
-      { id: 5, name: '🧹 淨灘服務', guideSrc: generatePlaceholderSvg('environment'), hint: '布條對齊上方，人物對齊下方' },
-      { id: 6, name: '🦁 授證大合照', guideSrc: generatePlaceholderSvg('ceremony'), hint: 'Logo居中，全體對齊下方剪影' },
-      { id: 7, name: '🚩 授旗典禮', guideSrc: generatePlaceholderSvg('flag'), hint: '旗桿居中，兩側人頭對齊' },
-      { id: 8, name: '🌳 社區綠化', guideSrc: generatePlaceholderSvg('planting'), hint: '種樹動作對齊彎腰剪影' },
-      { id: 9, name: '🏃 陪跑導盲', guideSrc: generatePlaceholderSvg('guided-run'), hint: '牽手處對齊黃圈' }
+      { id: 0, name: '💉 捐血活動', guideSrc: generateSvgGuide('blood'), hint: '「護理師請站旁邊，捐血的獅友坐中間，看鏡頭笑一個喔！」' },
+      { id: 1, name: '🔍 視力篩檢', guideSrc: generateSvgGuide('vision'), hint: '「請將驗光儀器對準框框，民眾的側臉靠上去。」' },
+      { id: 2, name: '🍱 愛心餐點', guideSrc: generateSvgGuide('meals'), hint: '「請將鏡頭靠近，拍下『雙手遞交便當』的溫馨特寫。」' },
+      { id: 3, name: '🎁 癌童關懷', guideSrc: generateSvgGuide('kids-gift'), hint: '「獅友請稍微蹲下和小朋友平視，手拿禮物看這邊！」' },
+      { id: 4, name: '🩸 血糖檢測', guideSrc: generateSvgGuide('diabetes'), hint: '「請把手機拿近一點，將手部抽血的動作放在中央。」' },
+      { id: 5, name: '🧹 淨灘/服務', guideSrc: generateSvgGuide('environment'), hint: '「紅布條對齊上方框框，志工夥伴請在下方排好喔！」' },
+      { id: 6, name: '🦁 授證大合照', guideSrc: generateSvgGuide('ceremony'), hint: '「請把獅子會Logo放在正上方，所有人往中間靠攏！」' },
+      { id: 7, name: '🚩 授旗典禮', guideSrc: generateSvgGuide('flag'), hint: '「旗桿請對齊中間的線，兩位會長站左右兩側，看鏡頭！」' },
+      { id: 8, name: '🌳 社區綠化', guideSrc: generateSvgGuide('planting'), hint: '「請獅友們做出彎腰種樹或打掃的動作，自然就好！」' },
+      { id: 9, name: '🏃 陪跑導盲', guideSrc: generateSvgGuide('guided-run'), hint: '「請拍下兩人牽引繩的動作，捕捉一起跑步的瞬間。」' }
     ];
 
-    // 動態生成 10 個按鈕到面板上
     poses.forEach((pose, index) => {
       const btn = document.createElement('button');
       btn.className = 'pose-btn';
       btn.innerText = pose.name;
-      
-      btn.addEventListener('click', () => {
-        updatePose(index);
-      });
-      
+      btn.addEventListener('click', () => updatePose(index));
       posePanel.appendChild(btn);
     });
 
-    // 更新畫面與按鈕狀態
     function updatePose(index) {
-      const pose = poses[index];
-      poseGuide.src = pose.guideSrc;
-      poseHint.innerText = pose.hint;
-      
-      // 更新按鈕的顏色 (移除所有 active，再加給當前點擊的按鈕)
+      poseGuide.src = poses[index].guideSrc;
+      poseHint.innerText = poses[index].hint;
       const allBtns = document.querySelectorAll('.pose-btn');
       allBtns.forEach(b => b.classList.remove('active'));
       allBtns[index].classList.add('active');
     }
-
   </script>
-
 </body>
 </html>
