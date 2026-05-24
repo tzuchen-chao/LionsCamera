@@ -45,7 +45,7 @@
       width: 100%;
       height: 100%;
       pointer-events: none; 
-      opacity: 0.85; 
+      opacity: 0.9; /* 稍微調高不透明度讓虛線更明顯 */
     }
 
     #poseHint {
@@ -62,7 +62,6 @@
       box-sizing: border-box;
     }
 
-    /* 主要拍照按鈕區 */
     #action-panel {
       width: 100%;
       max-width: 500px;
@@ -86,7 +85,6 @@
     .main-btn:active { transform: scale(0.98); }
     #retakeBtn { background-color: #ccc; display:none; }
 
-    /* 情境選單面板 */
     #pose-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -122,8 +120,8 @@
 </head>
 <body>
 
-  <h2>公益紀錄擺拍指導</h2>
-  <p id="status">選擇下方情境，依照畫面黃色剪影引導拍攝</p>
+  <h2>公益紀錄擺拍相機</h2>
+  <p id="status">選擇下方情境，將畫面人物對齊黃色虛線框</p>
 
   <div id="camera-container">
     <video id="video" autoplay playsinline></video>
@@ -132,7 +130,7 @@
   </div>
 
   <div id="action-panel">
-    <button id="snapBtn" class="main-btn">📸 拍下紀錄照</button>
+    <button id="snapBtn" class="main-btn">📸 拍下這張照片</button>
     <button id="retakeBtn" class="main-btn">🔄 重新拍攝</button>
   </div>
 
@@ -168,7 +166,7 @@
           updatePose(0); 
         };
       } catch (err) {
-        alert("無法開啟相機，請確認您已開啟權限！\n詳細錯誤：" + err.message);
+        alert("無法開啟相機，請確認您已允許瀏覽器使用相機的權限！\n詳細錯誤：" + err.message);
       }
     }
 
@@ -198,53 +196,56 @@
       retakeBtn.style.display = 'none';
     });
 
-    function generatePlaceholderSvg(poseType) {
-      let svgContent = '';
+    // 產生「黃色虛線」幾何圖形的魔法函數
+    function generateDashedSvg(poseType) {
+      let content = '';
       switch (poseType) {
-        case 'vision': 
-          svgContent = '<circle cx="50" cy="50" r="30" fill="none" stroke="%23F2A900" stroke-width="2"/><ellipse cx="50" cy="50" rx="15" ry="25" fill="%23F2A900" transform="rotate(-15, 50, 50)" />'; 
+        case 'blood': // 捐血 (一高一低人形)
+          content = '<circle cx="30" cy="40" r="12"/><rect x="20" y="55" width="20" height="45"/><circle cx="70" cy="30" r="12"/><rect x="60" y="45" width="20" height="55"/>'; 
           break;
-        case 'meals': 
-          svgContent = '<ellipse cx="30" cy="50" rx="20" ry="8" fill="%23F2A900"/><ellipse cx="70" cy="50" rx="20" ry="8" fill="%23F2A900"/><circle cx="50" cy="50" r="10" fill="none" stroke="%23F2A900" stroke-width="3"/>'; 
+        case 'vision': // 視力 (檢測儀器圓形 + 側臉線條)
+          content = '<circle cx="50" cy="40" r="25"/><path d="M 50 65 L 50 100 M 30 100 L 70 100"/>'; 
           break;
-        case 'kids-gift': 
-          svgContent = '<circle cx="30" cy="60" r="10" fill="none" stroke="%23F2A900" stroke-width="2"/><rect x="20" y="75" width="20" height="25" fill="none" stroke="%23F2A900" stroke-width="2"/><circle cx="70" cy="40" r="15" fill="none" stroke="%23F2A900" stroke-width="2"/><rect x="60" y="60" width="20" height="40" fill="none" stroke="%23F2A900" stroke-width="2"/><circle cx="50" cy="65" r="5" fill="%23F2A900"/>'; 
+        case 'meals': // 愛心餐 (雙手交疊)
+          content = '<ellipse cx="35" cy="50" rx="25" ry="10"/><ellipse cx="65" cy="50" rx="25" ry="10"/>'; 
           break;
-        case 'diabetes': 
-          svgContent = '<circle cx="50" cy="30" r="15" fill="none" stroke="%23F2A900" stroke-width="2"/><rect x="35" y="50" width="30" height="50" fill="none" stroke="%23F2A900" stroke-width="2"/><circle cx="50" cy="80" r="5" fill="%23F2A900"/>'; 
+        case 'kids-gift': // 癌童 (大人蹲姿 + 小孩站立)
+          content = '<circle cx="30" cy="60" r="10"/><rect x="20" y="75" width="20" height="25"/><circle cx="70" cy="40" r="12"/><rect x="60" y="55" width="20" height="45"/>'; 
           break;
-        case 'environment': 
-          svgContent = '<rect x="10" y="10" width="80" height="20" fill="none" stroke="%23F2A900" stroke-dasharray="5,5" stroke-width="2"/><circle cx="20" cy="70" r="8" fill="none" stroke="%23F2A900"/><circle cx="40" cy="70" r="8" fill="none" stroke="%23F2A900"/><circle cx="60" cy="70" r="8" fill="none" stroke="%23F2A900"/><circle cx="80" cy="70" r="8" fill="none" stroke="%23F2A900"/>'; 
+        case 'diabetes': // 糖尿病 (手部特寫框)
+          content = '<path d="M 40 100 L 40 40 A 10 10 0 0 1 60 40 L 60 100"/>'; 
           break;
-        case 'ceremony': 
-          svgContent = '<circle cx="50" cy="30" r="25" fill="none" stroke="%23F2A900" stroke-width="3"/><rect x="10" y="60" width="80" height="40" fill="%23F2A900" />'; 
+        case 'environment': // 淨灘 (上方橫布條 + 下方三個人頭)
+          content = '<rect x="10" y="10" width="80" height="20"/><circle cx="20" cy="70" r="10"/><circle cx="50" cy="70" r="10"/><circle cx="80" cy="70" r="10"/>'; 
           break;
-        case 'flag': 
-          svgContent = '<line x1="50" y1="10" x2="50" y2="90" stroke="%23F2A900" stroke-width="2"/><polygon points="50,10 80,25 50,40" fill="%23F2A900"/><ellipse cx="25" cy="50" rx="15" ry="30" fill="none" stroke="%23F2A900"/><ellipse cx="75" cy="50" rx="15" ry="30" fill="none" stroke="%23F2A900"/>'; 
+        case 'ceremony': // 授證合照 (中間 Logo 圓 + 下方全體群眾框)
+          content = '<circle cx="50" cy="35" r="20"/><rect x="10" y="70" width="80" height="30"/>'; 
           break;
-        case 'planting': 
-          svgContent = '<polygon points="10,60 30,50 30,70" fill="none" stroke="%23F2A900"/><polygon points="40,60 60,50 60,70" fill="none" stroke="%23F2A900"/><polygon points="70,60 90,50 90,70" fill="none" stroke="%23F2A900"/><circle cx="20" cy="85" r="5" fill="%23F2A900"/><circle cx="50" cy="85" r="5" fill="%23F2A900"/><circle cx="80" cy="85" r="5" fill="%23F2A900"/>'; 
+        case 'flag': // 授旗 (中間旗桿 + 左右人形)
+          content = '<line x1="50" y1="10" x2="50" y2="90"/><polygon points="50,10 80,25 50,40"/><circle cx="20" cy="50" r="12"/><circle cx="80" cy="50" r="12"/>'; 
           break;
-        case 'guided-run': 
-          svgContent = '<ellipse cx="35" cy="40" rx="10" ry="20" fill="none" stroke="%23F2A900"/><ellipse cx="65" cy="40" rx="10" ry="20" fill="none" stroke="%23F2A900"/><circle cx="50" cy="50" r="5" fill="%23F2A900"/>'; 
+        case 'planting': // 綠化 (彎腰種植的三角形姿態)
+          content = '<path d="M 20 80 L 30 50 L 40 80 M 60 80 L 70 50 L 80 80"/>'; 
+          break;
+        case 'guided-run': // 陪跑 (兩人並排 + 牽手相連線)
+          content = '<circle cx="30" cy="30" r="10"/><rect x="20" y="45" width="20" height="55"/><circle cx="70" cy="30" r="10"/><rect x="60" y="45" width="20" height="55"/><line x1="40" y1="60" x2="60" y2="60"/>'; 
           break;
       }
-      return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">${svgContent}</svg>`;
+      // 將所有圖案統一設定為：無填滿 (fill:none)、黃色 (#F2A900)、粗度 3px、虛線間隔 6px
+      return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><style>path, circle, rect, ellipse, line, polygon { stroke: %23F2A900; stroke-width: 3px; stroke-dasharray: 6,6; fill: none; }</style>${content}</svg>`;
     }
 
     const poses = [
-      // 這裡已經為您改成讀取 blood.png 檔案了！
-      { id: 0, name: '💉 捐血近照', guideSrc: 'blood.png', hint: '護理師與獅友，拍出微笑抽血' },
-      
-      { id: 1, name: '🔍 視力篩檢', guideSrc: generatePlaceholderSvg('vision'), hint: '側臉剪影對齊受檢者' },
-      { id: 2, name: '🍱 愛心餐點', guideSrc: generatePlaceholderSvg('meals'), hint: '遞物與接物雙手交疊' },
-      { id: 3, name: '🎁 癌童關懷', guideSrc: generatePlaceholderSvg('kids-gift'), hint: '獅友蹲下，小朋友站立' },
-      { id: 4, name: '🩸 糖尿病檢測', guideSrc: generatePlaceholderSvg('diabetes'), hint: '手指對齊，拍出專注量測' },
-      { id: 5, name: '🧹 淨灘服務', guideSrc: generatePlaceholderSvg('environment'), hint: '人頭對齊剪影，布條對齊上方' },
-      { id: 6, name: '🦁 授證大合照', guideSrc: generatePlaceholderSvg('ceremony'), hint: '全體獅友對齊下方剪影' },
-      { id: 7, name: '🚩 例會授旗', guideSrc: generatePlaceholderSvg('flag'), hint: '旗桿居中，兩側對齊會長' },
-      { id: 8, name: '🌳 社區綠化', guideSrc: generatePlaceholderSvg('planting'), hint: '種樹動作對齊彎腰剪影' },
-      { id: 9, name: '🏃 陪跑導盲', guideSrc: generatePlaceholderSvg('guided-run'), hint: '牽手處對齊黃圈，拍出動態' }
+      { id: 0, name: '💉 捐血活動', guideSrc: generateDashedSvg('blood'), hint: '護理師(右)與獅友(左)對齊虛線框' },
+      { id: 1, name: '🔍 視力篩檢', guideSrc: generateDashedSvg('vision'), hint: '將儀器放入圓圈，受檢者對齊下方線條' },
+      { id: 2, name: '🍱 愛心餐點', guideSrc: generateDashedSvg('meals'), hint: '請雙方將手部對齊兩個橢圓虛線' },
+      { id: 3, name: '🎁 癌童關懷', guideSrc: generateDashedSvg('kids-gift'), hint: '蹲下的大人(左)與站立的小孩(右)' },
+      { id: 4, name: '🩸 血糖檢測', guideSrc: generateDashedSvg('diabetes'), hint: '請將受測者的手指對齊中央虛線框' },
+      { id: 5, name: '🧹 淨灘/服務', guideSrc: generateDashedSvg('environment'), hint: '活動布條對齊上方，人員對齊下方圈圈' },
+      { id: 6, name: '🦁 授證大合照', guideSrc: generateDashedSvg('ceremony'), hint: '獅子會Logo在正上方，所有人往中間靠攏' },
+      { id: 7, name: '🚩 授旗典禮', guideSrc: generateDashedSvg('flag'), hint: '旗子保持在正中間，兩側人員對齊圓圈' },
+      { id: 8, name: '🌳 社區綠化', guideSrc: generateDashedSvg('planting'), hint: '請人員以彎腰姿勢對齊虛線' },
+      { id: 9, name: '🏃 陪跑導盲', guideSrc: generateDashedSvg('guided-run'), hint: '兩人並排站立，牽手處對齊中間橫線' }
     ];
 
     function updatePose(index) {
