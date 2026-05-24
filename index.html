@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>獅子會社會服務引導相機</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f4f9;
+      margin: 0;
+      padding: 20px;
+    }
+    h2 { color: #003366; /* 獅子會海軍藍 */ }
+    #camera-container {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+      border-radius: 10px;
+      overflow: hidden;
+      background-color: #000;
+    }
+    /* 相機畫面 */
+    video {
+      width: 100%;
+      display: block;
+    }
+    /* 引導框/相框 (用絕對定位疊加在影片上) */
+    #overlay {
+      position: absolute;
+      top: 10%;
+      left: 10%;
+      width: 80%;
+      height: 80%;
+      border: 4px dashed #F2A900; /* 獅子會黃 */
+      box-sizing: border-box;
+      pointer-events: none; /* 確保點擊穿透 */
+    }
+    /* 提示文字 */
+    .hint {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      color: white;
+      font-weight: bold;
+      text-shadow: 1px 1px 2px black;
+      pointer-events: none;
+    }
+    /* 大按鈕設計 */
+    button {
+      margin-top: 20px;
+      padding: 15px 40px;
+      font-size: 20px;
+      font-weight: bold;
+      background-color: #F2A900; /* 獅子會黃 */
+      color: #003366; /* 獅子會海軍藍 */
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    button:active { transform: scale(0.98); }
+    
+    /* 拍攝結果展示區 */
+    #result-container { margin-top: 20px; display: none; }
+    #result-image { width: 100%; max-width: 500px; border: 2px solid #003366; border-radius: 10px; }
+  </style>
+</head>
+<body>
+
+  <h2>公益紀錄專屬相機</h2>
+  <p>請允許使用相機權限，並將活動畫面放入黃色框內</p>
+
+  <div id="camera-container">
+    <video id="video" autoplay playsinline></video>
+    <div id="overlay"></div>
+    <div class="hint">請將活動布條對齊虛線框</div>
+  </div>
+
+  <button id="snapBtn">📸 拍下紀錄照</button>
+  <button id="retakeBtn" style="display:none; background-color: #ccc;">🔄 重新拍攝</button>
+
+  <canvas id="canvas" style="display:none;"></canvas>
+
+  <div id="result-container">
+    <h3>✅ 拍攝完成！(長按圖片可儲存)</h3>
+    <img id="result-image" alt="拍攝結果" />
+  </div>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const snapBtn = document.getElementById('snapBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const resultContainer = document.getElementById('result-container');
+    const resultImage = document.getElementById('result-image');
+    const cameraContainer = document.getElementById('camera-container');
+
+    // 啟動後置鏡頭
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' } // 強制使用後鏡頭
+        });
+        video.srcObject = stream;
+      } catch (err) {
+        alert("無法開啟相機，請確認您已開啟瀏覽器的相機權限！\n詳細錯誤：" + err.message);
+      }
+    }
+
+    // 頁面載入即啟動相機
+    startCamera();
+
+    // 點擊拍照按鈕
+    snapBtn.addEventListener('click', () => {
+      // 1. 設定畫布大小與影片真實解析度相同
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      // 2. 將影片畫面畫到畫布上
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // (進階：如果您有透明相框的圖片，可以在這裡用 ctx.drawImage 把相框疊加上去)
+      // 例如：ctx.drawImage(frameImage, 0, 0, canvas.width, canvas.height);
+
+      // 3. 將畫布轉換為圖片 URL
+      const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+      resultImage.src = dataURL;
+
+      // 4. 切換介面顯示
+      cameraContainer.style.display = 'none';
+      snapBtn.style.display = 'none';
+      resultContainer.style.display = 'block';
+      retakeBtn.style.display = 'inline-block';
+    });
+
+    // 點擊重新拍攝
+    retakeBtn.addEventListener('click', () => {
+      cameraContainer.style.display = 'block';
+      snapBtn.style.display = 'inline-block';
+      resultContainer.style.display = 'none';
+      retakeBtn.style.display = 'none';
+    });
+  </script>
+
+</body>
+</html>
