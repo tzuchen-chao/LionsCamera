@@ -16,13 +16,13 @@
       align-items: center;
       min-height: 100vh;
     }
-    h2 { color: #003366; margin-top: 15px; margin-bottom: 5px; font-size: 22px; }
-    #status { color: #666; font-size: 14px; margin-bottom: 15px; padding: 0 20px; }
+    h2 { color: #003366; margin-top: 20px; margin-bottom: 10px; }
+    #status { color: #666; font-size: 14px; margin-bottom: 20px; padding: 0 20px; }
 
     #camera-container {
       position: relative;
       width: 90vw;
-      height: 90vw; 
+      height: 90vw; /* 保持正方形 */
       max-width: 500px;
       max-height: 500px;
       border-radius: 15px;
@@ -31,23 +31,26 @@
       box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
     
+    /* 相機畫面 */
     video {
       width: 100%;
       height: 100%;
-      object-fit: cover; 
+      object-fit: cover; /* 確保影片畫面填滿容器 */
       display: block;
     }
 
+    /* 擺拍導引圖 (透明前景) */
     #poseGuide {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      pointer-events: none; 
-      opacity: 0.85; 
+      pointer-events: none; /* 確保點擊穿透 */
+      opacity: 0.8; /* 半透明效果 */
     }
 
+    /* 動態提示文字 */
     #poseHint {
       position: absolute;
       bottom: 20px;
@@ -62,69 +65,47 @@
       box-sizing: border-box;
     }
 
-    /* 主要拍照按鈕區 */
-    #action-panel {
+    /* 控制區域 */
+    #control-panel {
       width: 100%;
       max-width: 500px;
-      padding: 15px 0;
+      padding: 20px 0;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
     }
 
-    .main-btn {
+    /* 按鈕樣式 */
+    button {
       padding: 15px 40px;
       font-size: 18px;
       font-weight: bold;
-      background-color: #F2A900; 
-      color: #003366; 
+      background-color: #F2A900; /* 獅子會黃 */
+      color: #003366; /* 獅子會海軍藍 */
       border: none;
       border-radius: 30px;
       cursor: pointer;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       width: 80%;
+      max-width: 300px;
     }
-    .main-btn:active { transform: scale(0.98); }
+    button:active { transform: scale(0.98); }
+    button:disabled { background-color: #ccc; cursor: not-allowed; }
+
     #retakeBtn { background-color: #ccc; display:none; }
+    #poseSelectBtn { background-color: #003366; color: white; margin-top: 10px; font-size: 16px;}
 
-    /* ====== 新增：情境選單面板 ====== */
-    #pose-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr); /* 雙欄位設計 */
-      gap: 10px;
-      width: 90vw;
-      max-width: 500px;
-      margin-bottom: 20px;
-      padding: 0 10px;
-      box-sizing: border-box;
-    }
-
-    .pose-btn {
-      padding: 10px 5px;
-      font-size: 14px;
-      background-color: #fff;
-      color: #003366;
-      border: 2px solid #003366;
-      border-radius: 8px;
-      cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-      transition: all 0.2s;
-    }
-    /* 當前被選中的情境按鈕樣式 */
-    .pose-btn.active {
-      background-color: #003366;
-      color: #fff;
-      font-weight: bold;
-      border-color: #F2A900; /* 加上獅子黃邊框強化視覺 */
-    }
-
+    /* 拍攝結果展示區 */
     #result-container { margin-top: 20px; display: none; text-align: center; width: 90vw; max-width: 500px; }
     #result-image { width: 100%; border: 2px solid #003366; border-radius: 10px; }
+
   </style>
 </head>
 <body>
 
   <h2>公益紀錄擺拍指導</h2>
-  <p id="status">選擇下方情境，依照畫面黃色剪影引導拍攝</p>
+  <p id="status">請允許使用相機權限，並依照黃色人物剪影指導擺拍</p>
 
   <div id="camera-container">
     <video id="video" autoplay playsinline></video>
@@ -132,12 +113,11 @@
     <div id="poseHint"></div>
   </div>
 
-  <div id="action-panel">
-    <button id="snapBtn" class="main-btn">📸 拍下紀錄照</button>
-    <button id="retakeBtn" class="main-btn">🔄 重新拍攝</button>
+  <div id="control-panel">
+    <button id="snapBtn">📸 拍下紀錄照</button>
+    <button id="retakeBtn">🔄 重新拍攝</button>
+    <button id="poseSelectBtn">👉 選擇擺拍情境 (共10組)</button>
   </div>
-
-  <div id="pose-grid"></div>
 
   <canvas id="canvas" style="display:none;"></canvas>
 
@@ -152,13 +132,15 @@
     const ctx = canvas.getContext('2d');
     const snapBtn = document.getElementById('snapBtn');
     const retakeBtn = document.getElementById('retakeBtn');
+    const poseSelectBtn = document.getElementById('poseSelectBtn');
     const resultContainer = document.getElementById('result-container');
     const resultImage = document.getElementById('result-image');
     const cameraContainer = document.getElementById('camera-container');
+    const controlPanel = document.getElementById('control-panel');
     const poseGuide = document.getElementById('poseGuide');
     const poseHint = document.getElementById('poseHint');
-    const poseGrid = document.getElementById('pose-grid');
 
+    // 啟動後置鏡頭
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -166,62 +148,113 @@
         });
         video.srcObject = stream;
         video.onloadedmetadata = function() {
-          updatePose(0); 
+          updatePose(0); // 預設顯示第一組情境
         };
       } catch (err) {
-        alert("無法開啟相機，請確認您已開啟權限！\n詳細錯誤：" + err.message);
+        alert("無法開啟相機，請確認您已開啟瀏覽器的相機權限！\n詳細錯誤：" + err.message);
       }
     }
 
+    // 頁面載入即啟動相機
     startCamera();
 
+    // 點擊拍照按鈕
     snapBtn.addEventListener('click', () => {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const dataURL = canvas.toDataURL('image/jpeg', 0.8);
       resultImage.src = dataURL;
-      
       cameraContainer.style.display = 'none';
-      snapBtn.style.display = 'none';
-      poseGrid.style.display = 'none'; // 隱藏選單
-      
+      controlPanel.style.display = 'none';
       resultContainer.style.display = 'block';
       retakeBtn.style.display = 'inline-block';
     });
 
+    // 點擊重新拍攝
     retakeBtn.addEventListener('click', () => {
       cameraContainer.style.display = 'block';
-      snapBtn.style.display = 'inline-block';
-      poseGrid.style.display = 'grid'; // 重新顯示選單
-      
+      controlPanel.style.display = 'flex';
       resultContainer.style.display = 'none';
       retakeBtn.style.display = 'none';
     });
 
+    // ------------------------------------------------------------------------------------------
+    // 擺拍情境數據規劃 (共10組)
+    // 注意：這裡的 SVG 數據是基礎 placeholder，用戶以後可以用真正的高品質圖檔更換 URL。
+    // ------------------------------------------------------------------------------------------
+    
+    // 基础 SVG 剪影 Data URL 產生器 (用戶以後可以用真正的 PNG/SVG URL 更換)
     function generatePlaceholderSvg(poseType) {
+      // 這裡簡單模擬不同的姿勢幾何形狀
       let svgContent = '';
       switch (poseType) {
-        case 'blood': 
+        case 'blood': // 捐血：坐姿+站姿
           svgContent = '<circle cx="30" cy="40" r="15" fill="none" stroke="%23F2A900" stroke-width="2"/><rect x="20" y="60" width="20" height="40" fill="none" stroke="%23F2A900" stroke-width="2"/><circle cx="70" cy="30" r="15" fill="none" stroke="%23F2A900" stroke-width="2"/><rect x="60" y="50" width="20" height="50" fill="none" stroke="%23F2A900" stroke-width="2"/><circle cx="50" cy="55" r="5" fill="%23F2A900" />'; 
           break;
-        case 'vision': 
+        case 'vision': // 視力：圓孔+側臉
           svgContent = '<circle cx="50" cy="50" r="30" fill="none" stroke="%23F2A900" stroke-width="2"/><ellipse cx="50" cy="50" rx="15" ry="25" fill="%23F2A900" transform="rotate(-15, 50, 50)" />'; 
           break;
-        case 'meals': 
+        case 'meals': // 愛心餐：雙手交疊
           svgContent = '<ellipse cx="30" cy="50" rx="20" ry="8" fill="%23F2A900"/><ellipse cx="70" cy="50" rx="20" ry="8" fill="%23F2A900"/><circle cx="50" cy="50" r="10" fill="none" stroke="%23F2A900" stroke-width="3"/>'; 
           break;
-        case 'kids-gift': 
+        case 'kids-gift': // 癌童：蹲姿大人+小孩
           svgContent = '<circle cx="30" cy="60" r="10" fill="none" stroke="%23F2A900" stroke-width="2"/><rect x="20" y="75" width="20" height="25" fill="none" stroke="%23F2A900" stroke-width="2"/><circle cx="70" cy="40" r="15" fill="none" stroke="%23F2A900" stroke-width="2"/><rect x="60" y="60" width="20" height="40" fill="none" stroke="%23F2A900" stroke-width="2"/><circle cx="50" cy="65" r="5" fill="%23F2A900"/>'; 
           break;
-        case 'diabetes': 
+        case 'diabetes': // 糖尿病：手指+上半身
           svgContent = '<circle cx="50" cy="30" r="15" fill="none" stroke="%23F2A900" stroke-width="2"/><rect x="35" y="50" width="30" height="50" fill="none" stroke="%23F2A900" stroke-width="2"/><circle cx="50" cy="80" r="5" fill="%23F2A900"/>'; 
           break;
-        case 'environment': 
+        case 'environment': // 淨灘：下方人排+上方布條框
           svgContent = '<rect x="10" y="10" width="80" height="20" fill="none" stroke="%23F2A900" stroke-dasharray="5,5" stroke-width="2"/><circle cx="20" cy="70" r="8" fill="none" stroke="%23F2A900"/><circle cx="40" cy="70" r="8" fill="none" stroke="%23F2A900"/><circle cx="60" cy="70" r="8" fill="none" stroke="%23F2A900"/><circle cx="80" cy="70" r="8" fill="none" stroke="%23F2A900"/>'; 
           break;
-        case 'ceremony': 
+        case 'ceremony': // 授證大合照：中Logo圓+下方人群
           svgContent = '<circle cx="50" cy="30" r="25" fill="none" stroke="%23F2A900" stroke-width="3"/><rect x="10" y="60" width="80" height="40" fill="%23F2A900" />'; 
           break;
-        case 'flag': 
-          svgContent = '<line x1="50" y1="10" x2="50" y2="90" stroke="%23F2A900" stroke-width="2"/><polygon points="50,10 80,25 50,40" fill="%23F2A900"/><ellipse cx="25" cy="50" rx="15" ry="30" fill="none" stroke="%23F2A900"/><ellipse cx="75" cy="50" rx="15" ry="30" fill="none" stroke="%2
+        case 'flag': // 例會授旗：旗子+兩側人形
+          svgContent = '<line x1="50" y1="10" x2="50" y2="90" stroke="%23F2A900" stroke-width="2"/><polygon points="50,10 80,25 50,40" fill="%23F2A900"/><ellipse cx="25" cy="50" rx="15" ry="30" fill="none" stroke="%23F2A900"/><ellipse cx="75" cy="50" rx="15" ry="30" fill="none" stroke="%23F2A900"/>'; 
+          break;
+        case 'planting': // 社區綠化：彎腰人形排
+          svgContent = '<polygon points="10,60 30,50 30,70" fill="none" stroke="%23F2A900"/><polygon points="40,60 60,50 60,70" fill="none" stroke="%23F2A900"/><polygon points="70,60 90,50 90,70" fill="none" stroke="%23F2A900"/><circle cx="20" cy="85" r="5" fill="%23F2A900"/><circle cx="50" cy="85" r="5" fill="%23F2A900"/><circle cx="80" cy="85" r="5" fill="%23F2A900"/>'; 
+          break;
+        case 'guided-run': // 陪跑：牽手跑步雙人
+          svgContent = '<ellipse cx="35" cy="40" rx="10" ry="20" fill="none" stroke="%23F2A900"/><ellipse cx="65" cy="40" rx="10" ry="20" fill="none" stroke="%23F2A900"/><circle cx="50" cy="50" r="5" fill="%23F2A900"/>'; 
+          break;
+      }
+      return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">${svgContent}</svg>`;
+    }
+
+    // 情境數據陣列
+    const poses = [
+      { id: 0, name: '💉 捐血活動近照', guideSrc: generatePlaceholderSvg('blood'), hint: '護理師(站)與獅友(坐)，拍出微笑抽血' },
+      { id: 1, name: '🔍 視力篩檢服務', guideSrc: generatePlaceholderSvg('vision'), hint: '圓孔對齊儀器，側臉剪影對齊受檢者' },
+      { id: 2, name: '🍱 愛心餐點發放 (互動)', guideSrc: generatePlaceholderSvg('meals'), hint: '遞物與接物雙手交疊，拍出互動瞬間' },
+      { id: 3, name: '🎁 兒童癌症關懷 - 送禮', guideSrc: generatePlaceholderSvg('kids-gift'), hint: '獅友蹲下，小朋友站立，拍出溫馨感' },
+      { id: 4, name: '🩸 糖尿病檢測站', guideSrc: generatePlaceholderSvg('diabetes'), hint: '手指對齊手指剪影，拍出專注量測' },
+      { id: 5, name: '🧹 淨灘/環境服務 (團體)', guideSrc: generatePlaceholderSvg('environment'), hint: '人頭對齊下方剪影，布條對齊上方虛線' },
+      { id: 6, name: '🦁 授證大合照 (遠景)', guideSrc: generatePlaceholderSvg('ceremony'), hint: 'Logo居中圓圈，全體獅友對齊下方剪影' },
+      { id: 7, name: '🚩 例會授旗典禮 (雙人)', guideSrc: generatePlaceholderSvg('flag'), hint: '旗桿居中，兩側人頭剪影對齊會長' },
+      { id: 8, name: '🌳 社區綠化種植', guideSrc: generatePlaceholderSvg('planting'), hint: '種樹動作對齊彎腰剪影，樹苗對齊黃點' },
+      { id: 9, name: '🏃 視障者陪跑/導盲', guideSrc: generatePlaceholderSvg('guided-run'), hint: '牽手處對齊黃圈，拍出牽手跑步動態' }
+    ];
+
+    let currentPoseIndex = 0;
+
+    // 更新擺拍指導
+    function updatePose(index) {
+      const pose = poses[index];
+      poseGuide.src = pose.guideSrc;
+      poseHint.innerText = pose.hint;
+      poseSelectBtn.innerText = `👉 目前情境：${pose.name}`;
+    }
+
+    // 點擊選擇擺拍按鈕
+    poseSelectBtn.addEventListener('click', () => {
+      // 依序切換 10 組情境
+      currentPoseIndex = (currentPoseIndex + 1) % poses.length;
+      updatePose(currentPoseIndex);
+    });
+
+  </script>
+
+</body>
+</html>
